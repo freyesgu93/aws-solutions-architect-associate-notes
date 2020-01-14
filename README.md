@@ -771,6 +771,8 @@ SSH connections are between port 22 of the host and __an ephemeral port of the c
 
 Security groups are __stateful__, this means any connection initiated successfully will be completed.
 
+**Security groups referencing** can be **cross-account** but **no cross-region**.
+
 We can create __S3 proxy server__ for enabling use cases where S3 has to be accessed privately through VPN connection, AWS Direct Connect or VPC peering.
 
 AWS __reserves 5 IPs for every subnet__, not for every VPC.
@@ -812,7 +814,29 @@ The __allowed block size__ in VPC is between a /16 netmask (65,536 IP addresses)
 
 We can move part of our __on-premise address space to AWS__. This is called BYOIP. For this, we have to acquire a __ROA, Root Origin Authorization__ from the the regional internet registry and submit it to Amazon.
 
+An __Internet Gateway__ performs __Static NAT__ and __handles the communication to and from the public internet__.
 
+When creating a __default VPC__, the __CIDR block address given__ is `172.31.0.0/16`.
+
+__Dynamic NAT Gateways__ are __scalable__.
+
+**NACLs** operate on **layer 4**, while **security groups** use **layer 5**.
+
+Assuming we are working with a **custom VPC**, these are the three steps needed to **enable Internet access to a subnet**:
+1. Create an internet gateway and attach to a VPC
+2. Add a routing rule to forward internet bound traffic to the internet gateway
+3. Allocate public IPs for a subnet and enable auto-assign for resources within the subnet
+
+Each **NAT gateway** is created in a **specific Availability Zone** and implemented with redundancy in that zone.
+
+**Individual NAT gateways** can **handle 5 Gbps of bandwidth** and can **scale up to 45 Gbps.**
+
+**Reserved IPs** within a **subnet**:
+- `.0` - Network
+- `.1` - Router
+- `.2` - DNS
+- `.3` - Future
+- `.255` - Broadcast
 
 # DynamoDB
 
