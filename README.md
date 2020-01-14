@@ -763,7 +763,13 @@ We cannot route traffic to a __NAT gateway__ or __VPC gateway__ endpoints throug
 
 Every route table contains a __local route__ for communication within the VPC over IPv4. We __cannot modify or delete__ these routes.
 
-__VPC Endpoints always take precedence__ over NAT Gateways or Internet Gateways. 
+__VPC Endpoints always take precedence__ over NAT Gateways or Internet Gateways, as they are more specific routes.
+
+**VPC Gateway Endpoints**:
+- Are used via **route table entries**: they are gateway devices. **Prefix lists** for a service are used in the destination field with the gateway as the target.
+- Are **HA across AZs**, but are set **per region**.
+
+**VPC Interface Endpoints add or replace the DNS** for the service, no route table updates are required. They are **interfaces in a specific subnet**. For **HA**, you need to add multiple interfaces, **one per AZ**. If **Private DNS Names** option is set, **it overrides the default public endpoint DNS from the service**
 
 Network ACL __rules are evaluated in order__, starting with the lowest numbered rule. As soon as a rule matches, it is applied regardless of any higher numbered rule that may contradict it.
 
