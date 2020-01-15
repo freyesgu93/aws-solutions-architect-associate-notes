@@ -13,7 +13,7 @@ __Note__ — You can also check out [this blog post](https://sumit-ghosh.com/art
 ## Contents
 
 - [Well-Architected Framework](#well-architected-framework)
-- [Route 53](#route53)
+- [Route 53 / DNS](#route53)
 - [S3](#s3)
 - [RDS, Redshift and ElastiCache](##rds-redshift-and-elasticache)
 - [EBS](#ec2-and-ebs)
@@ -32,6 +32,8 @@ __Note__ — You can also check out [this blog post](https://sumit-ghosh.com/art
 - [KMS and CloudHSM](#kms-and-cloudhsm)
 - [Kinesis](#kinesis)
 - [EMR](#emr)
+- [CloudFront](#cloudfront)
+- [CloudTrail](#cloudtrail)
 - [Misc](#misc)
 
 
@@ -193,6 +195,22 @@ __Multivalue answer routing policy__ responds with upto 8 healthy records select
 __Weighted routing policy__ is a good fit for __blue-green deployments__.
 
 
+**Routing policy**
+- **Simple** routing policy – Use for a single resource that performs a given function for your domain, for example, a web server that serves content for the example.com website.
+
+- **Failover** routing policy – Use when you want to configure active-passive failover.
+
+- **Geolocation** routing policy – Use when you want to route traffic based on the location of your users.
+
+- **Geoproximity** routing policy – Use when you want to route traffic based on the location of your resources and, optionally, shift traffic from resources in one location to resources in another.
+
+- **Latency** routing policy – Use when you have resources in multiple AWS Regions and you want to route traffic to the region that provides the best latency.
+
+- **Multivalue answer** routing policy – Use when you want Route 53 to respond to DNS queries with up to eight healthy records selected at random.
+
+- **Weighted** routing policy – Use to route traffic to multiple resources in proportions that you specify.
+
+
 
 # S3
 
@@ -237,7 +255,7 @@ __Object sizes__ —
 S3 can store objects of size 0 bytes to 5 TB.
 A single PUT can transfer 5 GB max. For files larger than 100MB, multipart upload is recommended.
 
-__Cross-region replication__ requires that versioning be enabled on both the source bucket and the destination bucket.
+__Cross-region replication__ requires that versioning be enabled on both the source bucket and the destination bucket. Files in an existing bucket are not replicated automatically.
 
 __AWS Glacier archive retrieval__ options —
 - Expedited: Costly, 1-5 minutes.
@@ -255,11 +273,15 @@ In the __CORS__ configuration, the __exact URLs__ must be added, with the correc
 __S3__ does not support `OPTIONS`, `CONNECT` and `TRACE` __methods__. 
 
 __S3 encryptions__ —
-- SSE-S3: Data and master keys managed by S3.
-- SSE-C: The user manages the encryption keys.
-- SSE-KMS: AWS manages the data key, the user manages the master key.
+- Server-Side Encryption
+  - SSE-S3: Data and master keys managed by S3.
+  - SSE-C: The user manages the encryption keys.
+  - SSE-KMS: AWS manages the data key, the user manages the master key.
+- Client-Side Encryption (encrypting data before sending it to Amazon S3)
+  - Use a customer master key (CMK) stored in AWS Key Management Service (AWS KMS).
+  - Use a master key you store within your application.
 
-To make sure that S3 objects are only accessible from Cloudfront, create an __Origin Access Identity (OAI) for Cloudfront__ and grant access to the objects to that OAI.
+To **restrict access** to content that you serve from Amazon **S3 buckets**, you create **CloudFront signed URLs or signed cookies** to limit access to files in your Amazon S3 bucket, and then you create a **special CloudFront user** called an **Origin Access Identity (OAI)** and **associate it with your distribution**. Then you configure **permissions so that CloudFront can use the OAI to access and serve files** to your users, but users can't use a direct URL to the S3 bucket to access a file there.
 
 We can create __event notification in S3__ to __invoke lambda__ function.
 
@@ -292,7 +314,11 @@ __Preventing accidental deletion__ of S3 objects —
 - Enable versioning
 - Enable MFA delete
 
+Read after Write consistency for PUTS of new Objects. Eventual Consistency for overwrite PUTS and DELETES (can take some time to propagate). Translation: new objects can be retrieved (almost) immediately while updates or deletes are not immediate and take some time to propagate.
 
+**Cross-origin resource sharing (CORS)** defines a way for client web applications that are loaded in one domain to interact with resources in a different domain. With CORS support, you can build rich client-side web applications with Amazon S3 and selectively allow cross-origin access to your Amazon S3 resources.
+
+// Add tiering
 
 # RDS, Redshift and ElastiCache
 
@@ -309,6 +335,16 @@ __Redshift encryption__ —
 __RDS data size limits__ —
 - Aurora: 64 TB
 - Others: 16 TB.
+
+**RDS Read replicas**:
+- Aurora: Up to 15.
+- Others: Up to 5.
+
+**Read replicas** help with:
+- Disaster recovery: Cross-region, promoting replicas
+- Read performance
+
+**Multi-AZ deployments** help with *High Availability*. Plus, automatically creates a primary DB Instance and **synchronously replicates** the data to a standby instance in a different Availability Zone (AZ).
 
 During automated backup, Amazon RDS performs a storage volume snapshot of entire Database instance. Also, it captures transaction logs every 5 minutes.
 
@@ -392,10 +428,12 @@ Cloudwatch logs agent is __more efficient__ than AWS SSM Agent.
 
 With __EC2 dedicated hosts__ we have control over __number of cores__, not anywhere else.
 
-Placement groups —
-- Cluster
-- Spread. Maximum number of instances in an AZ is 7.
-- Partitioned
+**Placement groups**
+- **Cluster**: packs instances **close together inside an Availability Zone**. This strategy enables workloads to achieve the **low-latency network performance** necessary for **tightly-coupled node-to-node communication** that is typical of **HPC applications**.
+
+- **Partition**: spreads your instances across logical partitions such that groups of instances in one partition do not share the underlying hardware with groups of instances in different partitions. This strategy is typically used by large distributed and replicated workloads, such as Hadoop, Cassandra, and Kafka.
+
+- **Spread**: strictly places a small group of instances across distinct underlying hardware to reduce correlated failures.
 
 The __console does not support placement groups__, have to do it from CLI.
 
@@ -415,10 +453,10 @@ __Default Cloudwatch metrics__ —
 __Custom metrics__ —
 
 - Memory utilization
- - Disk swap utilization
- - Disk space utilization
- - Page file utilization
- - Log collection
+- Disk swap utilization
+- Disk space utilization
+- Page file utilization
+- Log collection
 
 __Reserved Instances that are terminated__ are **still billed** until the end of their term according to their payment option.
 
@@ -538,8 +576,9 @@ __Network Load Balancer__ can be used to __terminate TLS connections__. For this
 
 __Connection draining__ enables the load balancer to complete in-flight requests made to instances that are de-registering or unhealthy. 
 
-ASG termination policy —
+- AutoScaling Group termination policy —
 
+1. Availability Zones have the most instances, and at least one instance that is not protected from scale in.
 1. Oldest launch configuration.
 2. Closest to next billing hour.
 3. Random.
@@ -559,7 +598,7 @@ We can use __dead letter queues__ to isolate messages that can't be processed ri
 
 SQS does not __encrypt__ messages by default.
 
-Default __visibility timeout__ for SQS is __30 seconds__.
+**Visibility timeout** is the amount of time that a message is hidden for other consumers after a consumer reads such message. Default __visibility timeout__ for SQS is __30 seconds__.
 
 Each __FIFO Queue__ uses —
 - Message Deduplication ID 
@@ -768,6 +807,7 @@ __VPC Endpoints always take precedence__ over NAT Gateways or Internet Gateways,
 **VPC Gateway Endpoints**:
 - Are used via **route table entries**: they are gateway devices. **Prefix lists** for a service are used in the destination field with the gateway as the target.
 - Are **HA across AZs**, but are set **per region**.
+- They don't use external DNS, they use its own AWS network to resolve AWS public services.
 
 **VPC Interface Endpoints add or replace the DNS** for the service, no route table updates are required. They are **interfaces in a specific subnet**. For **HA**, you need to add multiple interfaces, **one per AZ**. If **Private DNS Names** option is set, **it overrides the default public endpoint DNS from the service**
 
@@ -844,19 +884,57 @@ Each **NAT gateway** is created in a **specific Availability Zone** and implemen
 - `.3` - Future
 - `.255` - Broadcast
 
+When using VPC peering, you need to enable DNS settings in the Peer Connections menu to resolve public IPs to private IPs.
+
+## IPv6
+To use it, the first step is to request an IPv6 allocation. Each VPC is allocated a /56 CIDR from the AWS and this cannot be adjusted.
+
+All IPv6 addresses used within AWS are publicly routable. Resources have public IPv6 addresses directly attached to them, unlike IPv4.
+
+DNS names are not allocated to IPv6 addresses.
+
+Not currently supported for VPNs, customer gateways and VPC endpoints.
+
+## VPC Flow Logs
+
+Are basically a `tcpdump`.
+
+You can create flow logs for network interfaces that are created by other AWS services, such as:
+
+- Elastic Load Balancing
+- Amazon RDS
+- Amazon ElastiCache
+- Amazon Redshift
+- Amazon WorkSpaces
+- NAT gateways
+- Transit gateways
+
+
+
 # DynamoDB
 
 AWS __DynamoDB__ is durable, ACID compliant, can go through multiple schema changes, and changes to the database does not result in any database downtime.
+
+    Note: we think is not ACID compliant by design but can achieve ACID compliance with secondary indexes.
+    Note2: ACID = Atomicity, Consistency, Isolation and Durability
 
 __DynamoDB Global Tables__ can be used to deploy a multi region, multi AZ, fully managed database solution.
 
 We can create __secondary indexes__ for __DynamoDB__ tables. Always choose DynamoDB when possible.
 
-DynamoDB streams can be used to monitor changes made to a database, and they can trigger lambda functions.
+A **secondary index is a data structure that contains a subset of attributes from a table, along with an alternate key to support Query operations.** You can retrieve data from the index using a Query, in much the same way as you use Query with a table. **A table can have multiple secondary indexes**, which gives your applications access to many different query patterns.
+
+DynamoDB supports two types of secondary indexes:
+
+- **Global** secondary index: **An index with a partition key and a sort key that can be different from those on the base table**. A global secondary index is considered "global" because queries on the index can span all of the data in the base table, across all partitions.
+
+- **Local** secondary index: **An index that has the same partition key as the base table, but a different sort key**. A local secondary index is "local" in the sense that every partition of a local secondary index is scoped to a base table partition that has the same partition key value.
+
+**DynamoDB streams** can be used to **monitor changes** made to a database, and they can **trigger Lambda functions**.
 
 We can turn on __autoscaling for DynamoDB__.
 
-For __write heavy__ use cases in __DynamoDB__, use partition keys with large number of distinct values.
+For __write heavy__ use cases in __DynamoDB__, use **partition keys with large number of distinct values**.
 
 __DynamoDB Accelerator, DAX__ is an __in-memory cache for DynamoDB__ that reduces response time from milliseconds to microseconds.
 
@@ -899,10 +977,11 @@ __Elastic Beanstalk__ can be used to host __Docker containers__.
 
 __AWS Storage Gateways__—
 
-1. File gateway
-2. Volume gateway: Cached volumes
-3. Volume gateway: Stored volumes
-4. Tape gateway
+- **File gateway**: Flat files, stored directly on S3.
+- **Volume gateway**
+  - **Stored volumes**: Entire Dataset is stored on site and is asynchronously backed up to S3.
+  - **Cached volumes**: Entire Dataset is stored on S3 and the most frequently accessed data is cached on site.
+- **Tape gateway**: Irrelevant.
 
 
 
@@ -913,13 +992,16 @@ __Amazon Cognito__ has two __authentication methods__, __independent__ of one an
 - Sign in via third party federation
 - Cognito user pools
 
-__AWS Directory Service__ options —
+__AWS Directory Service__ options:
 
-- AWS Managed Microsoft AD
-- AD Connector
-- Simple AD
-- Amazon Cloud Directory
-- Amazon Cognito
+- **AWS Managed Microsoft AD**
+- **Amazon Cognito**
+- **Amazon Cloud Directory** is a cloud-native, highly scalable, high-performance, multi-tenant directory service that provides web-based directories to make it easy for you to organize and manage all your application resources such as users, groups, locations, devices, and policies, and the rich relationships between them. Cloud Directory is a foundational building block for developers to create directory-based solutions easily and without having to worry about deployment, global scale, availability, and performance.
+- **AD Connector** is a directory gateway with which you can redirect directory requests to your on-premises Microsoft Active Directory without caching any information in the cloud. AD Connector comes in two sizes, small and large. You can spread application loads across multiple AD Connectors to scale to your performance needs. There are no enforced user or connection limits. 
+- **Simple AD** is a standalone managed directory that is powered by a Samba 4 Active Directory Compatible Server. Provides a subset of the features offered by AWS Managed Microsoft AD, including the ability to manage user accounts and group memberships, create and apply group policies, securely connect to Amazon EC2 instances, and provide Kerberos-based single sign-on (SSO). However, note that Simple AD does not support features such as trust relationships with other domains, Active Directory Administrative Center, PowerShell support, Active Directory recycle bin, group managed service accounts, and schema extensions for POSIX and Microsoft applications. It is available in two sizes:
+  - Small: Supports up to 500 users (approximately 2,000 objects including users, groups, and computers).
+  - Large: Supports up to 5,000 users (approximately 20,000 objects including users, groups, and computers).
+
 
 There is no __default policy__ ever, anywhere. When permissions are checked, roles and policies are considered together, and in the default case there is no policy, so only the role is considered.
 
@@ -945,15 +1027,22 @@ __Microsoft Active Directory__ supports __SAML__.
 
 # KMS and CloudHSM
 
+AWS KMS API can be used to encrypt data.
+
 __KMS__ master keys are region specific.
+
+## CloudHSM
 
 __CloudHSM backup procedure__ — Ephemeral backup key (EBK) is used to encrypt data and Persistent backup key (PBK) is used to encrypt EBK before saving it to an S3 bucket in the same region as that of AWS CloudHSM cluster.
 
-With __AWS CoudHSM__, we can control the entire lifecycle around the keys.
+With __AWS CloudHSM__, we can control the entire lifecycle around the keys. It helps you **meet corporate, contractual, and regulatory compliance** requirements for data security by using dedicated Hardware Security Module (HSM) instances within the AWS cloud. AWS and AWS Marketplace partners offer a variety of solutions for protecting sensitive data within the AWS platform, but for some applications and data subject to contractual or regulatory mandates for managing cryptographic keys, additional protection may be necessary.
 
-AWS KMS API can be used to encrypt data.
+You should consider **using AWS CloudHSM** if you require:
 
-
+- Keys stored in dedicated, third-party validated hardware security modules under your exclusive control.
+- FIPS 140-2 compliance.
+- Integration with applications using PKCS#11, Java JCE, or Microsoft CNG interfaces.
+- High-performance in-VPC cryptographic acceleration (bulk crypto).
 
 # Kinesis
 
@@ -985,16 +1074,39 @@ __EMR__ can use __spot instances__ as underlying nodes.
 We can access the underlying EC2 instances in AWS EMR cluster.
 
 
+# CloudFront
+- **Edge location**: location where content will be cached. Separated to an AWS Region/AZ. They are **not READ only**
+- **Origin**: Can be an EC2 Instance, S3Bucket, ELB or Route53
+- **Distribution**: Name given to the CDN which consists of a collection of Edge Locations.
+  - **Web Distribution**: For websites
+  - **RTMP**: For media streaming
+
+We can use __signed URLs and signed cookies with Cloudfront__ to protect resources.
+
+Slower login time and 504 errors in front of Cloudfront can be optimized by:
+- Lambda @ Edge.
+- Setting up an Origin Failover Policy.
+
+
+
+# CloudTrail
+Max 5 trails per region.
+
+We can create a __CloudTrail log across all regions__.
+
+By default, __CloudTrail logs are encrypted__ using S3 server-side encryption (SSE). We can also choose to encrypt with AWS KMS.
+
+
 
 # Misc
+
+For **disaster recovery** we can assume that an **entire region** fails.
 
 AWS STS — The __policy of the temporary credentials__ generated by STS are defined by the intersection of your IAM user policies and the policy that you pass as argument.
 
 AWS __VM Import__ // Export can be used to transfer virtual machines from local infrastructure to AWS and vice-versa.
 
 AWS __Trusted Advisor__ is a resource that helps users with cost management, performance and security.
-
-We can create a __CloudTrail log across all regions__.
 
 __CloudFormation Drift Detection__ can be used to detect changes in the environment. Drift Detection only __checks property values which are explicitly set__ by stack templates or by specifying template parameters. It does not determine drift for property values which are set by default.
 
@@ -1005,8 +1117,6 @@ __AWS Athena__ is a managed service which can be used to make interactive __sear
 __Amazon Inspector__ is a security assessment service, which helps improve security and compliance of applications.
 
 __AWS Opsworks__ is a configuration management service for Chef and Puppet. With __Opsworks Stacks__, we can model our application as __a stack containing different layers__.
-
-By default, __CloudTrail logs are encrypted__ using S3 server-side encryption (SSE). We can also choose to encrypt with AWS KMS.
 
 __Amazon ECS for Kubernetes (EKS)__ exists, it's a managed service.
 
@@ -1075,14 +1185,7 @@ __Cloudwatch monitoring schemes__ —
 
 __Transferring data__ from an EC2 instance to Amazon S3, Amazon Glacier, Amazon DynamoDB, Amazon SES, Amazon SQS, or Amazon SimpleDB __in the same AWS Region has no cost at all__.
 
-We can use __signed URLs and signed cookies with Cloudfront__ to protect resources.
-
-__Amazon MQ__ is a message queue which supports industry standard messaging protocols.
-
-Slower login time and 504 errors in front of Cloudfront can be optimized by —
-
-- Lambda @ Edge.
-- Setting up an Origin Failover Policy.
+__Amazon MQ__ is a message queue which supports industry standard messaging protocols. Good fit for migrating existing application.
 
 __AWS Shield__ is a service that protects resources against DDoS attacks to EC2, ELB, Cloudfront and Route53.
 
@@ -1116,3 +1219,5 @@ __Third party SSL cert__ can be imported into —
 
 - AWS Certificate Manager
 - IAM Certificate Store
+
+**AMIs** cannot be *shared*.
