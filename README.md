@@ -210,7 +210,7 @@ __Weighted routing policy__ is a good fit for __blue-green deployments__.
 
 - **Weighted** routing policy – Use to route traffic to multiple resources in proportions that you specify.
 
-
+**Private zones** need **enableDnsHostnames** and **enableDnsSupport** enabled on a VPC.
 
 # S3
 
