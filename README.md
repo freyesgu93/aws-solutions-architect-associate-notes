@@ -273,7 +273,7 @@ In the __CORS__ configuration, the __exact URLs__ must be added, with the correc
 __S3__ does not support `OPTIONS`, `CONNECT` and `TRACE` __methods__. 
 
 __S3 encryptions__ —
-- Server-Side Encryption
+- Server-Side Encryption (uses __AES 256__)
   - SSE-S3: Data and master keys managed by S3.
   - SSE-C: The user manages the encryption keys.
   - SSE-KMS: AWS manages the data key, the user manages the master key.
@@ -297,9 +297,7 @@ __Provisioned capacity__ should be used when we want to guarantee the availabili
 
 For __S3 static website hosting__, the default provided __URL__ is https://bucket-name.s3-website-aws-region.amazonaws.com.
 
-S3 server side encryption uses __AES 256__.
-
-S3 __event notification targets__ —
+S3 __event notification targets__:
 
 - SQS
 - SNS
@@ -365,6 +363,8 @@ We can't use auto-scaling with __RDS__. To improve __performance__, we should lo
 We configure __RDS engine configurations__ using __parameter groups__.
 
 To use __REDIS AUTH with ElastiCache__, __in-transit encryption__ must be enabled for clusters.
+
+In a **ElastiCache cluster**, to **secure the session data** in the portal by **requiring** them to enter a **password before** they are **granted permission** to **execute Redis commands**, you can authenticate the users using Redis AUTH by creating a new Redis Cluster with both `--transit-encryption-enabled` and `--auth-token` parameters enabled.
 
 For RDS, __Enhanced Monitoring__ gathers its metrics from an __agent on the instance__.
 
@@ -477,7 +477,7 @@ You can attach a network interface (ENI) to an EC2 instance in the following way
 2. When it's stopped. Warm attach.
 3. When the instance is being launched. Cold attach.
 
-EBS snapshots are more efficient and cost-effective solution compared to __disk mirroring using RAID1__.
+EBS snapshots are more efficient and cost-effective solution compared to __disk mirroring using RAID 1__.
 
 EBS volumes can only be attached to an EC2 instance in the __same Availability Zone__.
 
@@ -489,10 +489,10 @@ With __scheduled reserved instances__, we can plan out our future usage and get 
 
 __Throughput optimized HDD vs Cold HDD__ — Throughput optimized is used for frequently accessed data, whereas Cold HDD is used for infrequently accessed data. Also the later is more cost-effective.
 
-__RAID0 vs RAID1__ —
+__RAID 0 vs RAID 1__ —
 
-- RAID1 is used for mirroring, high-availability and redundancy.
-- RAID0 is used for higher performance, it can combine multiple disk drives together.
+- RAID 1 is used for mirroring, high-availability and redundancy.
+- RAID 0 is used for higher performance, it can combine multiple disk drives together.
 
 Larger EC2 instances have higher disk data throughput. This can be used in conjunction with RAID 0 to __improve EBS performance__.
 
@@ -788,11 +788,11 @@ __Lambda Retry upon Failure Behavior__ —
 - Poll-based and stream-based event source (Kinesis or DynamoDB) — Lambda keeps __retrying until the data expires__. The exception is __blocking__, this ensures the data are processed in order.
 - Poll-based but not stream-based event source (SQS) — On unsuccessful processing or if the function times out of the message, it is __returned to the queue__, and ready for further reprocessing after the visibility timeout period. If the function errors out, it is sent to __Dead Letter Queue__.
 
-__Lambda traffic shifting__ —
+__Lambda traffic shifting__:
 
-- Canary
-- Linear
-- All at once
+- **Canary**: Traffic is shifted in two increments. You can choose from predefined canary options that specify the percentage of traffic shifted to your updated Lambda function version in the first increment and the interval, in minutes, before the remaining traffic is shifted in the second increment.
+- **Linear**: Traffic is shifted in equal increments with an equal number of minutes between each increment. You can choose from predefined linear options that specify the percentage of traffic shifted in each increment and the number of minutes between each increment.
+- **All-at-once**: All traffic is shifted from the original Lambda function to the updated Lambda function version at once.
 
 
 
@@ -938,7 +938,7 @@ For __write heavy__ use cases in __DynamoDB__, use **partition keys with large n
 
 __DynamoDB Accelerator, DAX__ is an __in-memory cache for DynamoDB__ that reduces response time from milliseconds to microseconds.
 
-
+If there are a lot of occurrences where a **shard iterator expires unexpectedly**, to increase DynamoDB table capacity to store data, we can **increase the write capacity assigned to the shard table**.
 
 # ECS
 
@@ -1087,6 +1087,7 @@ Slower login time and 504 errors in front of Cloudfront can be optimized by:
 - Lambda @ Edge.
 - Setting up an Origin Failover Policy.
 
+Enabling __multiple domains to serve HTTPS__ over same IP address —- Generate an SSL cert with AWS Certificate Manager and create a Cloudfront distribution. Associate cert with distribution and enable Server Name Indication (SNI).
 
 
 # CloudTrail
@@ -1148,7 +1149,7 @@ __AWS Data Pipeline__ can automate the movement and transformation of data for d
 
 __Disaster recovery solutions__ —
 - Backup and Restore. Cheapest.
-- Pilot Light
+- **Term pilot** light is often used to describe a DR scenario in which a minimal version of an environment is always running in the cloud. The idea of the pilot light is an analogy that comes from the gas heater. In a gas heater, a small flame that’s always on can quickly ignite the entire furnace to heat up a house. This scenario is similar to a backup-and-restore scenario.
 - Warm Standby
 - Multi-Site
 - Multiple AWS Regions. Costliest.
@@ -1201,8 +1202,6 @@ __Perfect Forward Secrecy__ is supported by —
 - Cloudfront
 - Elastic Load Balancing
 
-Enabling __multiple domains to serve HTTPS__ over same IP address —- Generate an SSL cert with AWS Certificate Manager and create a Cloudfront distribution. Associate cert with distribution and enable Server Name Indication (SNI).
-
 Classic Load Balancer does not support __SNI__, we have to use Application Load Balancer or Cloudfront.
 
 The following services enable us to __run SQL queries directly against S3 data__ —
@@ -1221,3 +1220,11 @@ __Third party SSL cert__ can be imported into —
 - IAM Certificate Store
 
 **AMIs** cannot be *shared*.
+
+To decouple architecture:
+- SWF
+- SQS
+
+Amazon Cognito service is primarily used for user authentication and not for providing access to your AWS resources
+
+AWS SSO service uses STS, it does not issue short-lived credentials by itself. AWS Single Sign-On (SSO) is a cloud SSO service that makes it easy to centrally manage SSO access to multiple AWS accounts and business applications.
