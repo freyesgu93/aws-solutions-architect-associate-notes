@@ -214,6 +214,8 @@ __Weighted routing policy__ is a good fit for __blue-green deployments__.
 
 By design, The AWS DNS service does not respond to requests originating from outside the VPC.
 
+**Private zones** need **enableDnsHostnames** and **enableDnsSupport** enabled on a VPC.
+
 # S3
 
 In a newly created S3 bucket, everything // every additional option is turned off by default. Also, no bucket policy exists.
