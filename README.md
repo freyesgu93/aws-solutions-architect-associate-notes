@@ -170,8 +170,10 @@ It's not used to _distribute_ traffic.
 
 __CNAME vs ALIAS__ —  
 
-- For routing to S3 bucket // Elastic load balancer use A record with ALIAS.  
+- For routing to S3 bucket // Elastic load balancer // CloudFront distribution use A record with ALIAS.  
 - For routing to RDS instance use CNAME with NO ALIAS // without ALIAS.
+
+A CNAME is only suitable for subdomains.
 
 ALIAS only supports the following services —
 - API Gateway
@@ -210,7 +212,7 @@ __Weighted routing policy__ is a good fit for __blue-green deployments__.
 
 - **Weighted** routing policy – Use to route traffic to multiple resources in proportions that you specify.
 
-
+By design, The AWS DNS service does not respond to requests originating from outside the VPC.
 
 # S3
 
@@ -248,8 +250,9 @@ When you enable logging on a bucket, the console both enables logging on the sou
 __S3 bucket endpoints formats__ —
 1. http://bucket.s3.amazonaws.com
 2. http://bucket.s3.aws-region.amazonaws.com
-3. http://s3.amazonaws.com/bucket
+3. http://s3.amazonaws.com/bucket (this is only valid if the bucket is in us-east-1)
 4. http://s3.aws-region.amazonaws.com/bucket
+
 
 __Object sizes__ —
 S3 can store objects of size 0 bytes to 5 TB.
@@ -385,7 +388,7 @@ The memory and processor __usage by each process__ in an RDS instance can not be
 
 __IAM DB authentication__ can be used with __MySQL and PostgreSQL__. With this, you don't need to use a password when you connect to a DB instance. Instead, you use an __authentication token__.
 
-
+**MS SQL** and **Oracle** database engines have a **limit** to the **number of databases that can run per instance**
 
 
 # EC2 and EBS
@@ -433,7 +436,7 @@ With __EC2 dedicated hosts__ we have control over __number of cores__, not anywh
 
 - **Partition**: spreads your instances across logical partitions such that groups of instances in one partition do not share the underlying hardware with groups of instances in different partitions. This strategy is typically used by large distributed and replicated workloads, such as Hadoop, Cassandra, and Kafka.
 
-- **Spread**: strictly places a small group of instances across distinct underlying hardware to reduce correlated failures.
+- **Spread**: strictly places a small group of instances across distinct underlying hardware to reduce correlated failures. Maximum of 7 running instances per Availability Zone
 
 The __console does not support placement groups__, have to do it from CLI.
 
@@ -521,7 +524,15 @@ __Throughput mode__
 1. Bursting is ideal for arbitrary large amount of data, because it scales properly.
 2. But for cases with high throughput to storage ratio, such as common in web applications, provisioned mode is better.
 
+Provisioned Throughput mode is available for applications with high throughput to storage (MiB/s per TiB) ratios, or with requirements greater than those allowed by the Bursting Throughput mode. For example, say you're using Amazon EFS for development tools, web serving, or content management applications where the amount of data in your file system is low relative to throughput demands. Your file system can now get the high levels of throughput your applications require without having to pad your file system. 
 
+General Purpose Performance Mode
+
+We recommend the General Purpose performance mode for the majority of your Amazon EFS file systems. General Purpose is ideal for latency-sensitive use cases, like web serving environments, content management systems, home directories, and general file serving. If you don't choose a performance mode when you create your file system, Amazon EFS selects the General Purpose mode for you by default.
+
+Max I/O Performance Mode
+
+File systems in the Max I/O mode can scale to higher levels of aggregate throughput and operations per second. This scaling is done with a tradeoff of slightly higher latencies for file metadata operations. Highly parallelized applications and workloads, such as big data analysis, media processing, and genomics analysis, can benefit from this mode. 
 
 # ELB and Autoscaling
 
@@ -598,7 +609,7 @@ We can use __dead letter queues__ to isolate messages that can't be processed ri
 
 SQS does not __encrypt__ messages by default.
 
-**Visibility timeout** is the amount of time that a message is hidden for other consumers after a consumer reads such message. Default __visibility timeout__ for SQS is __30 seconds__.
+**Visibility timeout** is the amount of time that a message is hidden for other consumers after a consumer reads such message. Default __visibility timeout__ for SQS is __30 seconds__. Maximum is 12 hours. Min 0 seconds.
 
 Each __FIFO Queue__ uses —
 - Message Deduplication ID 
@@ -608,7 +619,7 @@ For application with identical message bodies, use unique deduplication ID, whil
 
 Both the default and maximum batch size for `ReceiveMessage` call of SQS is 10.
 
-Reducing SQS API calls —
+**Reducing SQS API calls** —
 
 - Use long polling.
 - Send `DeleteMessage` requests in batch using `DeleteMessageBatch`. Other batch actions are SendMessageBatch and `ChangeMessageVisibilityBatch`. 
@@ -617,7 +628,7 @@ __Message retention period__ in SQS — 1 minute to 14 days. The default is 4 da
 
 Limit on number of __inflight messages__ — 120,000 for standard queue and 20,000 for FIFO queue.
 
-
+Amazon SQS long polling is a way to retrieve messages from your Amazon SQS queues. While the regular short polling returns immediately, even if the message queue being polled is empty, long polling doesn’t return a response until a message arrives in the message queue, or the long poll times out.
 
 # SNS
 
@@ -940,6 +951,27 @@ __DynamoDB Accelerator, DAX__ is an __in-memory cache for DynamoDB__ that reduce
 
 If there are a lot of occurrences where a **shard iterator expires unexpectedly**, to increase DynamoDB table capacity to store data, we can **increase the write capacity assigned to the shard table**.
 
+**Throughput setup** for DynamoDB can be assigned at **tables level**.
+
+DynamoDB allows for the **storage of large text and binary objects**, but there is a **limit of 400 KB**
+
+When reading data from DynamoDB, users can specify whether they want the read to be eventually consistent or strongly consistent:
+
+- Eventually consistent reads (the default) – The eventual consistency option maximizes your read throughput. However, an eventually consistent read might not reflect the results of a recently completed write. All copies of data usually reach consistency within a second. Repeating a read after a short time should return the updated data.
+- Strongly consistent reads — In addition to eventual consistency, DynamoDB also gives you the flexibility and control to request a strongly consistent read if your application, or an element of your application, requires it. A strongly consistent read returns a result that reflects all writes that received a successful response before the read.
+- ACID transactions – DynamoDB transactions provide developers atomicity, consistency, isolation, and durability (ACID) across one or more tables within a single AWS account and region. You can use transactions when building applications that require coordinated inserts, deletes, or updates to multiple items as part of a single logical business operation.
+
+Related to the previous item: 
+
+- Perform strongly consistent reads of up to 24 KB per second (4 KB × 6 read capacity units).
+- Perform eventually consistent reads of up to 48 KB per second (twice as much read throughput).
+
+Valid DynamoDB Headers attributes over HTTP using the POST request method:
+- x-amz-date
+- host
+- content-type
+- x-amz-target
+
 # ECS
 
 Launch types —
@@ -1097,7 +1129,32 @@ We can create a __CloudTrail log across all regions__.
 
 By default, __CloudTrail logs are encrypted__ using S3 server-side encryption (SSE). We can also choose to encrypt with AWS KMS.
 
+# EC2
 
+Each instance that you launch into a VPC has a tenancy attribute\. This attribute has the following values\.
+
+
+| Tenancy Value | Description | 
+| --- | --- | 
+|  `default`  |  Your instance runs on shared hardware\.   | 
+|  `dedicated`  |  Your instance runs on single\-tenant hardware\.   | 
+|  `host`  | Your instance runs on a Dedicated Host, which is an isolated server with configurations that you can control\. | 
+
+After you launch an instance, there are some limitations to changing its tenancy\.
++ You cannot change the tenancy of an instance from `default` to `dedicated` or `host` after you've launched it\.
++ You cannot change the tenancy of an instance from `dedicated` or `host` to `default` after you've launched it\.
+
+You can change the tenancy of an instance from `dedicated` to `host`, or from `host` to `dedicated` after you've launched it\.
+
+Each VPC has a related instance tenancy attribute\. This attribute has the following values\.
+
+
+| Tenancy Value | Description | 
+| --- | --- | 
+|  `default`  |  An instance launched into the VPC runs on shared hardware by default, unless you explicitly specify a different tenancy during instance launch\.  | 
+|  `dedicated`  |  An instance launched into the VPC is a Dedicated Instance by default, unless you explicitly specify a tenancy of `host` during instance launch\. You cannot specify a tenancy of `default` during instance launch\.  | 
+
+You can change the instance tenancy of a VPC from `dedicated` to `default` after you create it\. You cannot change the instance tenancy of a VPC to `dedicated`\.
 
 # Misc
 
@@ -1156,7 +1213,7 @@ __Disaster recovery solutions__ —
 
 With __AWS Config__, we can get a snapshot of the current configuration of our AWS account.
 
-For __queue based processing__, scaling EC2 instances based on the size of the queue is a preferred architecture.
+For __queue based processing__, **scaling** EC2 instances based on the **size of the queue** is a preferred architecture.
 
 It's best practice to launch Amazon __RDS instance outside an Elastic Beanstalk environment__.
 
@@ -1171,8 +1228,6 @@ To automatically trigger __CodePipeline__ with changes in source __S3__ bucket, 
 __Amazon Data Lifecycle Manager__ can be used for creation, retention and deletion of EBS snapshots.
 
 With __AWS Organizations__, we can centrally manage policies across multiple AWS accounts. With __Service Control Policies (SCPs)__, we can ensure security policies are in place.
-
-__AWS WAF__ is a web application firewall.
 
 In __AWS Managed Blockchain network__, the format for __resource endpoint__ is — `ResourceID.MemberID.NetworkID.managedblockchain.us-east-1.amazonaws.com:PortNumber`.
 
@@ -1228,3 +1283,41 @@ To decouple architecture:
 Amazon Cognito service is primarily used for user authentication and not for providing access to your AWS resources
 
 AWS SSO service uses STS, it does not issue short-lived credentials by itself. AWS Single Sign-On (SSO) is a cloud SSO service that makes it easy to centrally manage SSO access to multiple AWS accounts and business applications.
+
+
+**To give Aurora MySQL access to Lambda**
+
+Create an AWS Identity and Access Management (IAM) policy that provides the permissions that allow your Aurora MySQL DB cluster to invoke Lambda functions. For instructions, see Creating an IAM Policy to Access AWS Lambda Resources.
+
+1. Create an IAM role, and attach the IAM policy you created in Creating an IAM Policy to Access AWS Lambda Resources to the new IAM role. Set the aws_default_lambda_role DB cluster parameter to the Amazon Resource Name (ARN) of the new IAM role. If the cluster is part of an Aurora global database, apply the same setting for each Aurora cluster in the global database.
+
+2. To permit database users in an Aurora MySQL DB cluster to invoke Lambda functions, associate the role that you created.
+
+3. Configure your Aurora MySQL DB cluster to allow outbound connections to Lambda. If the cluster is part of an Aurora global database, enable outbound connections for each Aurora cluster in the global database.
+
+**Amazon Macie** uses **Machine Learning to protect sensitive data**
+
+Web servers stateless:
+- RDS
+- DynamoDB
+- Elasticache
+
+When editing permissions (policies and ACLs), to whom does the concept of the "Owner" refer?  The "Owner" refers to the identity and email address used to create the AWS account.
+
+SQS uses multiple hosts, and each host holds only a portion of all the messages. When a staff member calls for their next message, the consumer process does not see all the hosts or all the messages. As such, messages are not necessarily delivered in the order in which they were generated.
+
+AWS services allow native encryption of data (AWS Key Management Service (KMS) or, in some cases, using customer provided keys), while at rest:
+- EFS
+- EBS
+- S3
+- Elasticache for **Redis** (NOT for Memcached)
+
+AWS WAF conditions:
+- IP Match
+- String Match
+- Size Constraint
+
+
+Once a VPC is set to Dedicated hosting, it can be changed back to default hosting via the CLI, SDK or API. Note that this will not change hosting settings for existing instances, only future ones. Existing instances can be changed via CLI, SDK or API but need to be in a stopped state to do so 
+
+With NAT instances, the most common oversight is forgetting to disable Source/Destination Checks
