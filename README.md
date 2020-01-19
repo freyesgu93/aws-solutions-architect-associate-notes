@@ -402,10 +402,10 @@ Not all EC2 instance types support instance store volume.
 Persistence — Instance store persists during reboots, but not stop or terminate. EBS volumes however persists accross reboot, stop, and terminate.
 
 __EBS volume types__ —
-1. General purpose SSD. For web applications // most use cases.
-2. Provisioned IOPS SSD. For critical high performing databases.
-3. Throughput optimized HDD. For Big Data.
-4. Cold HDD. For infrequently accessed data.
+1. Provisioned IOPS SSD. I/O-Intensive NoSQL and relational databases. 4GB - 16TB. Max 64000 IOPS. Max 1000MB/s throughput. *For critical high performing databases.*
+2. General purpose SSD. Boot volumes, low-latency interactive apps, dev&test. 1GB - 16TB. Max 16000 IOPS. Max 250MB/s throughput. The performance of gp2 volumes is tied to volume size. Volumes earn I/O credits at the baseline performance rate of 3 IOPS per GiB of volume size. *For web applications // most use cases.*
+3. Throughput optimized HDD. For Big Data, data warehouses, log processings. 500GB - 16TB. Max 500 IOPS. Max 500MB/s throughput. *For Big Data.*
+4. Cold HDD. Colder data requiring fewer scans per day. 500GB - 16TB. Max 250 IOPS. Max 250MB/s throughput. *For infrequently accessed data.*
 
 Also, to note, __HDDs cannot be boot volumes__.
 
