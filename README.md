@@ -222,7 +222,7 @@ In a newly created S3 bucket, everything // every additional option is turned of
 
 __S3 bucket properties__ are —
 1. Versioning
-2. Server access logging
+2. Server access logging (track every request access to S3 buckets including the requester, bucket name, request time, request action, referrer, turnaround time, and error code information.)
 3. Static website hosting
 4. Object level logging // Essentially CloudTrail
 5. Transfer acceleration
@@ -267,6 +267,8 @@ __AWS Glacier archive retrieval__ options —
 - Standard: Default, 3-5 hours.
 - Bulk: Cheapest, 5-12 hours.
 
+Glacier has a management console which you can use to create and delete vaults. However, **you cannot directly upload archives to Glacier by using the management console.**
+
 To increase performance, we can __prefix each object name with a hash key__ along with the current date. But, according to the new S3 performance announcement, this is __not needed anymore__.
 
 __Increasing performance in S3__ —
@@ -300,15 +302,15 @@ AWS S3 __performance__ —
 
 __Provisioned capacity__ should be used when we want to guarantee the availability of fast expedited retrieval from S3 Glacier within minutes.
 
-For __S3 static website hosting__, the default provided __URL__ is https://bucket-name.s3-website-aws-region.amazonaws.com.
-
 S3 __event notification targets__:
 
 - SQS
 - SNS
 - Lambda
 
-An 80 TB __Snowball__ appliance and 100 TB Snowball Edge appliance only have 72 TB and 83 TB of __usable capacity__ respectively. 
+An 80 TB __Snowball__ appliance and 100 TB Snowball Edge appliance only have 72 TB and 83 TB of __usable capacity__ respectively.
+
+For [__S3 static website hosting__, the default provided __URL__](https://docs.aws.amazon.com/AmazonS3/latest/dev/WebsiteHosting.html) is https://bucket-name.s3-website-aws-region.amazonaws.com. Looks like, as well, it's https://bucket-name.s3-website.aws-region.amazonaws.com.
 
 For __static website hosting__ with S3, the name of the bucket must be the same as the domain or subdomain name.
 
@@ -321,9 +323,11 @@ Read after Write consistency for PUTS of new Objects. Eventual Consistency for o
 
 **Cross-origin resource sharing (CORS)** defines a way for client web applications that are loaded in one domain to interact with resources in a different domain. With CORS support, you can build rich client-side web applications with Amazon S3 and selectively allow cross-origin access to your Amazon S3 resources.
 
-// Add tiering
+Objects must be stored at least 30 days in the current storage class before you can transition them to STANDARD_IA or ONEZONE_IA. Amazon S3 doesn't transition objects within the first 30 days because newer objects are often accessed more frequently or deleted sooner than is suitable for STANDARD_IA or ONEZONE_IA storage.
 
 # RDS, Redshift and ElastiCache
+
+Redshift it's primarily **used for OLAP applications** and not for OLTP. It doesn't scale automatically to handle the exponential growth of the database.
 
 Amazon __Redshift Enhanced VPC Routing__ provides VPC resources the access to Redshift.
 
@@ -373,7 +377,13 @@ In a **ElastiCache cluster**, to **secure the session data** in the portal by **
 
 For RDS, __Enhanced Monitoring__ gathers its metrics from an __agent on the instance__.
 
-In case of a __failover__, Amazon RDS flips the canonical name record (__CNAME__) for your DB instance to point at the standby.
+**RDS Enhanced Monitoring metrics**:
+
+- **RDS child processes**.
+- **RDS processes**.
+- **OS processes**.
+
+In case of a __failover__, Amazon RDS flips the canonical name record (__CNAME__) for your DB instance to point at the standby. Aurora will attempt to create a new instance in the same availability zone as the original. If unable to do so, Aurora will attempt to create it in a different AZ.
 
 __Aurora endpoints__, by default — 
 
@@ -401,8 +411,18 @@ Not all EC2 instance types support instance store volume.
 
 Persistence — Instance store persists during reboots, but not stop or terminate. EBS volumes however persists accross reboot, stop, and terminate.
 
+When you create an encrypted EBS volume and attach it to a supported instance type, the following types of data are encrypted:
+
+   - Data at rest inside the volume
+
+   - All data moving between the volume and the instance
+
+   - All snapshots created from the volume
+
+   - All volumes created from those snapshots
+
 __EBS volume types__ —
-1. Provisioned IOPS SSD. I/O-Intensive NoSQL and relational databases. 4GB - 16TB. Max 64000 IOPS. Max 1000MB/s throughput. *For critical high performing databases.*
+1. Provisioned IOPS SSD. I/O-Intensive NoSQL and relational databases. 4GB - 16TB. Max 64000 IOPS. Max 1000MB/s throughput. IO1 is designed to deliver a consistent baseline performance of **up to 50 IOPS/GB**. *For critical high performing databases.*
 2. General purpose SSD. Boot volumes, low-latency interactive apps, dev&test. 1GB - 16TB. Max 16000 IOPS. Max 250MB/s throughput. The performance of gp2 volumes is tied to volume size. Volumes earn I/O credits at the baseline performance rate of 3 IOPS per GiB of volume size. *For web applications // most use cases.*
 3. Throughput optimized HDD. For Big Data, data warehouses, log processings. 500GB - 16TB. Max 500 IOPS. Max 500MB/s throughput. *For Big Data.*
 4. Cold HDD. Colder data requiring fewer scans per day. 500GB - 16TB. Max 250 IOPS. Max 250MB/s throughput. *For infrequently accessed data.*
@@ -1174,6 +1194,12 @@ __AWS Server Migration Service (SMS)__ is an agentless service which makes it ea
 
 __AWS Athena__ is a managed service which can be used to make interactive __search queries to S3 data__.
 
+AWS __Athena pricing__ is based upon per query and amount of data scanned in each query. To __reduce price__ —
+- Partition data based on different parameters so that amount of data scanned gets reduced.
+- Create separate workgroups based upon user groups.
+
+__AWS Athena is simpler__ and requires less effort to set up __than AWS Quicksight__.
+
 __Amazon Inspector__ is a security assessment service, which helps improve security and compliance of applications.
 
 __AWS Opsworks__ is a configuration management service for Chef and Puppet. With __Opsworks Stacks__, we can model our application as __a stack containing different layers__.
@@ -1187,11 +1213,6 @@ For __CloudFront query string__ forwarding, the parameter names and values used 
 __AWS Polly__ — Lexicons are specific to a region. For a single text appearing multiple times, we can create alias using multiple Lexicons.
 
 Amazon __Quicksight__ is a managed service for __creating dashboards__ with data visualization.
-
-AWS __Athena pricing__ is based upon per query and amount of data scanned in each query. To __reduce price__ —
-- Partition data based on different parameters so that amount of data scanned gets reduced.
-- Create separate workgroups based upon user groups.
-
 
 __AWS CloudSearch__ helps us add search to our website or application. __Like Elasticsearch__.
 
@@ -1218,8 +1239,6 @@ With __AWS Config__, we can get a snapshot of the current configuration of our A
 For __queue based processing__, **scaling** EC2 instances based on the **size of the queue** is a preferred architecture.
 
 It's best practice to launch Amazon __RDS instance outside an Elastic Beanstalk environment__.
-
-__AWS Athena is simpler__ and requires less effort to set up __than AWS Quicksight__.
 
 __RI Coverage Budget__ reports number of instances that are part of Reserved Instance. For an organisation using default IAM policy, each member account owner needs to create a budget policy for individual accounts and not by master account.
 
@@ -1271,14 +1290,17 @@ By default, each workflow execution can run for a __maximum of 1 year__ in Amazo
 
 In __AWS SWF__, a __decision task__ tells the decider the state of the workflow execution.
 
+**SWF** is a **fully-managed state tracker and task coordinator service**. It does **not provide serverless orchestration to multiple AWS resources**. It ensures that a **task is never duplicated** and is **assigned only once**.
+
 __Third party SSL cert__ can be imported into —
+
 
 - AWS Certificate Manager
 - IAM Certificate Store
 
 **AMIs** cannot be *shared*.
 
-To decouple architecture:
+To **decouple** architecture:
 - SWF
 - SQS
 
@@ -1299,7 +1321,7 @@ Create an AWS Identity and Access Management (IAM) policy that provides the perm
 
 **Amazon Macie** uses **Machine Learning to protect sensitive data**
 
-Web servers stateless:
+Services for web servers **stateless**:
 - RDS
 - DynamoDB
 - Elasticache
@@ -1323,3 +1345,11 @@ AWS WAF conditions:
 Once a VPC is set to Dedicated hosting, it can be changed back to default hosting via the CLI, SDK or API. Note that this will not change hosting settings for existing instances, only future ones. Existing instances can be changed via CLI, SDK or API but need to be in a stopped state to do so 
 
 With NAT instances, the most common oversight is forgetting to disable Source/Destination Checks
+
+For **file operations**, use **EFS**.
+
+**Elastic Fabric Adapter (EFA)** is a network device that you can attach to your Amazon EC2 instance to **accelerate High Performance Computing (HPC) and machine learning applications**. EFA enables you to achieve the application performance of an on-premises HPC cluster, with the scalability, flexibility, and elasticity provided by the AWS Cloud. **OS-bypass capabilities of the Elastic Fabric Adapter (EFA) are not supported on Windows instances.** Although you can attach EFA to your Windows instances, this will just act as a regular Elastic Network Adapter
+
+**AWS Global Accelerator** is a service that improves the availability and performance of your applications with local or global users. It provides **static IP addresses** that act as a fixed entry point to your application endpoints in a single or multiple AWS Regions, such as your Application Load Balancers, Network Load Balancers or Amazon EC2 instances.
+
+**Amazon FSx** have full support for the SMB protocol and Windows NTFS, Active Directory (AD) integration, and Distributed File System (DFS). 
