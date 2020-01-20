@@ -16,7 +16,7 @@ __Note__ — You can also check out [this blog post](https://sumit-ghosh.com/art
 - [Route 53 / DNS](#route53)
 - [S3](#s3)
 - [RDS, Redshift and ElastiCache](##rds-redshift-and-elasticache)
-- [EBS](#ec2-and-ebs)
+- [EC2 - EBS](#ec2-and-ebs)
 - [EFS](#efs)
 - [ELB and Autoscaling](#elb-and-autoscaling)
 - [SQS](#sqs)
@@ -216,6 +216,8 @@ By design, The AWS DNS service does not respond to requests originating from out
 
 **Private zones** need **enableDnsHostnames** and **enableDnsSupport** enabled on a VPC.
 
+Amazon Route 53’s DNS services does not support DNSSEC at this time.
+
 # S3
 
 In a newly created S3 bucket, everything // every additional option is turned off by default. Also, no bucket policy exists.
@@ -402,6 +404,9 @@ __IAM DB authentication__ can be used with __MySQL and PostgreSQL__. With this, 
 
 **MS SQL** and **Oracle** database engines have a **limit** to the **number of databases that can run per instance**
 
+In case you require intense, **full-text search capability, use MyISAM storage** engine instead.
+
+**IAM database authentication** is only supported in **MySQL and PostgreSQL** database engines.
 
 # EC2 and EBS
 
@@ -521,7 +526,15 @@ __RAID 0 vs RAID 1__ —
 
 Larger EC2 instances have higher disk data throughput. This can be used in conjunction with RAID 0 to __improve EBS performance__.
 
+An Elastic IP address doesn’t incur charges as long as the following conditions are true:
 
+- The Elastic IP address is associated with an Amazon EC2 instance.
+- The instance associated with the Elastic IP address is running.
+- The instance has only one Elastic IP address attached to it.
+
+If you’ve stopped or terminated an EC2 instance with an associated Elastic IP address and you don’t need that Elastic IP address anymore, consider disassociating or releasing the Elastic IP address .
+
+If your Spot instance is terminated or stopped by Amazon EC2 in the first instance hour, you will not be charged for that usage
 
 # EFS
 
@@ -1353,3 +1366,9 @@ For **file operations**, use **EFS**.
 **AWS Global Accelerator** is a service that improves the availability and performance of your applications with local or global users. It provides **static IP addresses** that act as a fixed entry point to your application endpoints in a single or multiple AWS Regions, such as your Application Load Balancers, Network Load Balancers or Amazon EC2 instances.
 
 **Amazon FSx** have full support for the SMB protocol and Windows NTFS, Active Directory (AD) integration, and Distributed File System (DFS). 
+
+Because overlay multicast is a method of building IP level multicast across a network fabric supporting unicast IP routing, such as Amazon Virtual Private Cloud (Amazon VPC).
+
+AWS hosts a variety of **public datasets** that anyone can access **for free**.
+
+Amazon FSx for Lustre provides a high-performance file system optimized for fast processing of workloads such as machine learning, high performance computing (HPC), video processing, financial modeling, and electronic design automation (EDA). These workloads commonly require data to be presented via a fast and scalable file system interface, and typically have data sets stored on long-term data stores like Amazon S3.
